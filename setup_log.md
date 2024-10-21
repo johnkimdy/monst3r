@@ -1,8 +1,7 @@
-During monst3r requirements installation:
+# During monst3r requirements installation:
 
-# Note that many libraries overlap with mast3r conda environment so I decided to build the monst3r env on top of the mast3r environment to avoid storage space redundancy
-# but is also risky in that this changes some versions (like numpy and torch versions that is used in mast3r). we shall see
-# below is the error message when ```pip install -r requirements.txt``` from monst3r repo.
+### Note that many libraries overlap with mast3r conda environment so I decided to build the monst3r env on top of the mast3r environment to avoid storage space redundancy but this is also risky in that this changes some versions (like numpy and torch versions that is used in mast3r). we shall see
+##### below is the error message when ```pip install -r requirements.txt``` from monst3r repo.
 
     Attempting uninstall: torch
         Found existing installation: torch 2.0.1
