@@ -42,7 +42,7 @@ cd monst3r
 ```bash
 conda create -n monst3r python=3.11 cmake=3.14.0
 conda activate monst3r 
-conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia  # use the correct version of cuda for your system
+conda install pytorch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 pytorch-cuda=12.4 -c pytorch -c nvidia # use the correct version of cuda for your system
 pip install -r requirements.txt
 # Optional: you can also install additional packages to:
 # - training

@@ -12,6 +12,7 @@ einops
 trimesh
 pyglet<2
 huggingface-hub[torch]>=0.22
+imageio
 
 # for camera trajectory
 evo
