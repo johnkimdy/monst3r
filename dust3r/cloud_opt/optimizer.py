@@ -113,7 +113,7 @@ class PointCloudOptimizer(BasePCOptimizer):
                 with torch.no_grad():
                     self.refine_motion_mask_w_sam2()
             else:
-                self.sam2_dynamic_masks = None
+                self.sam2_dynamic_masks = None # DONGYOON: sam2 dynamic mask?
 
     def get_flow(self, sintel_ckpt=False): #TODO: test with gt flow
         print('precomputing flow...')
@@ -591,6 +591,7 @@ class PointCloudOptimizer(BasePCOptimizer):
 
         return loss
     
+    ### NON-BATCHIFY to reduce memory during inference
     def forward_non_batchify(self, epoch=9999):
 
         # --(1) Perform the original pairwise 3D consistency loss (pairwise 3D consistency)--
@@ -617,7 +618,7 @@ class PointCloudOptimizer(BasePCOptimizer):
         # --(2) Add temporal smoothing constraint between adjacent frames (temporal smoothing)--
         temporal_smoothing_loss = 0.0
         if self.temporal_smoothing_weight > 0:
-            # Get the global poses (4x4) for all images
+            # Get the mode = GlobalAlignerMode.PointCloudOptimizer poses (4x4) for all images
             im_poses = self.get_im_poses()  # shape: (n_imgs, 4, 4)
             # Stack the relative poses between adjacent frames and use the existing relative_pose_loss function
             rel_RT1, rel_RT2 = [], []

@@ -83,4 +83,4 @@ USER appuser
 EXPOSE 7860 8000
 
 # Run the application.
-CMD python demo.py --device cuda
+# CMD python demo.py --device cuda

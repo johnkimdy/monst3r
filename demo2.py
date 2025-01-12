@@ -11,6 +11,9 @@ import numpy as np
 import tempfile
 import functools
 import copy
+import pickle
+from sklearn.model_selection import ParameterGrid
+from datetime import datetime
 
 from dust3r.inference import inference
 from dust3r.model import AsymmetricCroCo3DStereo
@@ -337,40 +340,124 @@ if __name__ == '__main__':
             input_files = [args.input_dir]
         recon_fun = functools.partial(get_reconstructed_scene, args, tmpdirname, model, args.device, args.silent, args.image_size)
         
-        # populate the grid of hyperparameters
-        # for loop over all the combinations
-        torch.cuda.memory._record_memory_history()
+        # Define the hyperparameter grid
+        hyperparameter_grid = {
+            'schedule': ['linear', 'exponential'],
+            'niter': [100, 300, 500],
+            'min_conf_thr': {'min': 1, 'max': 3, 'steps': 0.1},
+            'as_pointcloud': True,
+            'mask_sky': False,
+            'clean_depth': True,
+            'transparent_cams': False,
+            'cam_size': 0.05,
+            'show_cam': True,
+            'scenegraph_type': ['swinstride', 'complete', 'oneref', 'swin', 'swin2stride'],
+            'winsize': {'min': 7, 'max': 11, 'steps': 2},
+            'refid': 0,
+            'temporal_smoothing_weight': {'min': 0.01, 'max': 0.04, 'steps': 0.005},
+            'translation_weight': ['0.5', '1.0', '2.0'],
+            'shared_focal': True,
+            'flow_loss_weight': {'min': 0, 'max': 0.1, 'steps': 0.01},
+            'flow_loss_start_iter': {'min': 0.1, 'max': 3, 'steps': 0.1},
+            'flow_loss_threshold': {'min': 1, 'max': 3, 'steps': 0.1},
+            'use_gt_mask': [True, False],
+            'fps': 12,
+            'num_frames': 100,
+            # Add other hyperparameters as needed
+        }
 
-        # Call the function with default parameters
-        scene, outfile, imgs = recon_fun(
-            filelist=input_files,
-            schedule='linear',
-            niter=300,
-            min_conf_thr=1.1,
-            as_pointcloud=True,
-            mask_sky=False,
-            clean_depth=True,
-            transparent_cams=False,
-            cam_size=0.05,
-            show_cam=True,
-            scenegraph_type='swinstride',
-            winsize=5,
-            refid=0,
-            seq_name=args.seq_name,
-            new_model_weights=args.weights,
-            temporal_smoothing_weight=0.01,
-            translation_weight='1.0',
-            shared_focal=True,
-            flow_loss_weight=0.01,
-            flow_loss_start_iter=0.1,
-            flow_loss_threshold=25,
-            use_gt_mask=args.use_gt_davis_masks,
-            fps=args.fps,
-            num_frames=args.num_frames,
-        )
-        torch.cuda.memory._dump_snapshot("my_snapshot.pickle")
+        # Create a directory to store results
+        results_dir = "hyperparameter_search_results"
+        os.makedirs(results_dir, exist_ok=True)
 
-        print(f"Processing completed. Output saved in {tmpdirname}/{args.seq_name}")
+        # Initialize ParameterGrid
+        grid = ParameterGrid(hyperparameter_grid)
+        total_combinations = len(grid)
+        print(f"Total hyperparameter combinations to evaluate: {total_combinations}")
+
+        # Optionally, set up logging
+        log_file = os.path.join(results_dir, "grid_search_log.txt")
+        with open(log_file, 'w') as log:
+            log.write(f"Hyperparameter Grid Search Log - {datetime.now()}\n")
+            log.write(f"Total combinations: {total_combinations}\n\n")
+
+        # Iterate over all combinations
+        for idx, params in enumerate(grid, 1):
+            print(f"Evaluating combination {idx}/{total_combinations}: {params}")
+
+            # Optionally, log the current combination
+            with open(log_file, 'a') as log:
+                log.write(f"Combination {idx}/{total_combinations}: {params}\n")
+            
+            # Record CUDA memory history before running
+            torch.cuda.memory._record_memory_history()
+
+            try:
+                # Call recon_fun with the current set of hyperparameters
+                scene, outfile, imgs = recon_fun(
+                    filelist=input_files,
+                    schedule=params['schedule'],
+                    niter=params['niter'],
+                    min_conf_thr=params['min_conf_thr'],
+                    as_pointcloud=params['as_pointcloud'],
+                    mask_sky=params['mask_sky'],
+                    clean_depth=params['clean_depth'],
+                    transparent_cams=params['transparent_cams'],
+                    cam_size=params['cam_size'],
+                    show_cam=params['show_cam'],
+                    scenegraph_type=params['scenegraph_type'],
+                    winsize=params['winsize'],
+                    refid=params['refid'],
+                    seq_name=args.seq_name,
+                    new_model_weights=args.weights,
+                    temporal_smoothing_weight=params['temporal_smoothing_weight'],
+                    translation_weight=params['translation_weight'],
+                    shared_focal=params['shared_focal'],
+                    flow_loss_weight=params['flow_loss_weight'],
+                    flow_loss_start_iter=params['flow_loss_start_iter'],
+                    flow_loss_threshold=params['flow_loss_threshold'],
+                    use_gt_mask=args.use_gt_davis_masks if 'use_gt_mask' not in params else params['use_gt_mask'],
+                    fps=params['fps'],
+                    num_frames=params['num_frames'],
+                )
+
+                # Dump CUDA memory snapshot after running
+                memory_snapshot = torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+
+                # Save the outputs uniquely, e.g., using the combination index
+                combination_dir = os.path.join(results_dir, f"combo_{idx}")
+                os.makedirs(combination_dir, exist_ok=True)
+                
+                # Save scene, outfile, imgs as needed
+                # Example: Assuming scene and outfile are serializable or can be saved appropriately
+                with open(os.path.join(combination_dir, "scene.pkl"), 'wb') as f_scene:
+                    pickle.dump(scene, f_scene)
+                
+                with open(os.path.join(combination_dir, "outfile.pkl"), 'wb') as f_out:
+                    pickle.dump(outfile, f_out)
+                
+                with open(os.path.join(combination_dir, "imgs.pkl"), 'wb') as f_imgs:
+                    pickle.dump(imgs, f_imgs)
+
+                # Save memory snapshot
+                with open(os.path.join(combination_dir, "memory_snapshot.pkl"), 'wb') as f_mem:
+                    pickle.dump(memory_snapshot, f_mem)
+
+                # Log completion
+                print(f"Combination {idx} completed. Output saved in {combination_dir}")
+                with open(log_file, 'a') as log:
+                    log.write(f"Combination {idx} completed successfully.\n\n")
+
+            except Exception as e:
+                # Handle exceptions, log them, and continue
+                print(f"Combination {idx} failed with exception: {e}")
+                with open(log_file, 'a') as log:
+                    log.write(f"Combination {idx} failed with exception: {e}\n\n")
+                continue  # Proceed to the next combination
+
+        print("Hyperparameter grid search completed.")
     else:
         # Launch Gradio demo
         main_demo(tmpdirname, model, args.device, args.image_size, server_name, args.server_port, silent=args.silent, args=args)
+
+
