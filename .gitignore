@@ -1,6 +1,10 @@
 data/*/
 *checkpoints/
 checkpoints
+Good_For_DONG/
+grid_search_outputs/
+demo_data/
+hyperparameter_search_results/
 demo_tmp
 davis_results*
 tmp/
