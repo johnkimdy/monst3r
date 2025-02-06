@@ -330,6 +330,8 @@ if __name__ == '__main__':
         print('Outputting stuff in', tmpdirname)
 
     if args.input_dir is not None:
+        # Record CUDA memory usage
+        torch.cuda.memory._record_memory_history()
         # Process images in the input directory with default parameters
         if os.path.isdir(args.input_dir):    # input_dir is a directory of images
             input_files = [os.path.join(args.input_dir, fname) for fname in sorted(os.listdir(args.input_dir))]
@@ -368,8 +370,8 @@ if __name__ == '__main__':
             fps=args.fps,
             num_frames=args.num_frames,
         )
+         # Dump memory snapshot
         torch.cuda.memory._dump_snapshot("my_snapshot.pickle")
-
         print(f"Processing completed. Output saved in {tmpdirname}/{args.seq_name}")
     else:
         # Launch Gradio demo

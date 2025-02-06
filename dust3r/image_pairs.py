@@ -5,19 +5,27 @@ import numpy as np
 import torch
 
 
+# Main function to create image pairs based on different scene graph strategies
 def make_pairs(imgs, scene_graph='complete', prefilter=None, symmetrize=True, force_symmetrize=False):
     pairs = []
-    if scene_graph == 'complete':  # complete graph
+
+    # 1. Complete Graph Mode
+    if scene_graph == 'complete':  # Makes pairs between every possible image
         for i in range(len(imgs)):
             for j in range(i):
                 pairs.append((imgs[i], imgs[j]))
+                
+    # 2. Sliding Window Mode (swin)
     elif scene_graph.startswith('swin'):
-        iscyclic = not scene_graph.endswith('noncyclic')
+        iscyclic = not scene_graph.endswith('noncyclic')  # Whether to connect last frame back to first
+        # Get window size from format "swin-{size}"
         try:
             winsize = int(scene_graph.split('-')[1])
         except Exception as e:
             winsize = 3
+            
         pairsid = set()
+        # Different stride options
         if scene_graph.startswith('swinstride'):
             stride = 2
         elif scene_graph.startswith('swin2stride'):
@@ -28,11 +36,12 @@ def make_pairs(imgs, scene_graph='complete', prefilter=None, symmetrize=True, fo
             start = 2
         else:
             start = 1
+        # For each image, make pairs with next {winsize} images based on stride
         for i in range(len(imgs)):
             for j in range(start, stride*winsize + start, stride):
                 idx = (i + j)
                 if iscyclic:
-                    idx = idx % len(imgs)  # explicit loop closure
+                    idx = idx % len(imgs)  # Loop back to start if cyclic
                 if idx >= len(imgs):
                     continue
                 pairsid.add((i, idx) if i < idx else (idx, i))
@@ -57,16 +66,21 @@ def make_pairs(imgs, scene_graph='complete', prefilter=None, symmetrize=True, fo
                 pairsid.add((i, j) if i < j else (j, i))
         for i, j in pairsid:
             pairs.append((imgs[i], imgs[j]))
+
+                
+    # 3. One Reference Mode
     elif scene_graph.startswith('oneref'):
+        # Uses one frame as reference and pairs it with all others
         refid = int(scene_graph.split('-')[1]) if '-' in scene_graph else 0
         for j in range(len(imgs)):
             if j != refid:
                 pairs.append((imgs[refid], imgs[j]))
-
+    
+    # Create reverse pairs if symmetrize is True
     if (symmetrize and not scene_graph.startswith('oneref') and not scene_graph.startswith('swin-1')) or len(imgs) == 2 or force_symmetrize:
         pairs += [(img2, img1) for img1, img2 in pairs]
 
-    # now, remove edges
+    # now, remove edges (Apply optional sequence-based filtering)
     if isinstance(prefilter, str) and prefilter.startswith('seq'):
         pairs = filter_pairs_seq(pairs, int(prefilter[3:]))
 

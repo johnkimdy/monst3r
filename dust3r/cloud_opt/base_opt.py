@@ -184,7 +184,7 @@ class BasePCOptimizer (nn.Module):
         return len(indices)
 
     @torch.no_grad()
-    def _compute_img_conf(self, pred1_conf, pred2_conf):
+    def _compute_img_conf(self, pred1_conf, pred2_conf): # compute the input confidence maps, which takes the maximum confidence value at each pixel position from all views where that pixel appears
         im_conf = nn.ParameterList([torch.zeros(hw, device=self.device) for hw in self.imshapes])
         for e, (i, j) in enumerate(self.edges):
             im_conf[i] = torch.maximum(im_conf[i], pred1_conf[e])
