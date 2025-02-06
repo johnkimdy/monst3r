@@ -22,6 +22,12 @@ avg_error
 .gradio
 pyrightconfig.json
 results
+grid_search_outputs/
+grid_search_outputs/*
+hyperparameter_search_results/
+hyperparameter_search_results/*
+Good_For_DONG/
+Good_For_DONG/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -154,3 +160,6 @@ dmypy.json
 .pyre/
 zilejNuE
 waymo_processed.zip
+
+# CUDA memory snapshots
+.*pickle
